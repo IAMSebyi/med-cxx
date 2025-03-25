@@ -1,0 +1,9 @@
+{
+  "name": "med-cxx",
+  "version": "0.1.0",
+  "dependencies": [
+    "libtorch",
+    "opencv",
+    "cxxopts"
+  ]
+}

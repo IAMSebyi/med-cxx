@@ -77,15 +77,21 @@ runs:
           -i ${GITHUB_WORKSPACE}/artifacts \
           -s ${GITHUB_WORKSPACE}
 
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgJsonGlob: '**/vcpkg.json'
+        runVcpkgInstall: true
+        vcpkgDirectory: '${{ github.workspace }}/vcpkg'
+
     - name: Configure CMake
       shell: bash
-      if: ${{ !(runner.os == 'Windows' && matrix.cxx == 'g++') }}
       run: |
         export CMAKE_GENERATOR=${{ matrix.cmake_generator }}
         bash ./scripts/cmake.sh configure \
           -b ${{ env.BUILD_DIR }} \
           -c ${{ env.BUILD_TYPE }} \
-          -e "-DPROJECT_WARNINGS_AS_ERRORS=${{ inputs.warnings_as_errors }} -DGITHUB_ACTIONS=${GITHUB_ACTIONS} ${{ inputs.custom_flags }}" \
+          -e "-DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake -DPROJECT_WARNINGS_AS_ERRORS=${{ inputs.warnings_as_errors }} ${{ inputs.custom_flags }}" \
           -i ${GITHUB_WORKSPACE}/artifacts \
           -s ${GITHUB_WORKSPACE}
 
