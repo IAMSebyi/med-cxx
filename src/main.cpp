@@ -1,84 +1,234 @@
+#include <iostream>
+#include <filesystem>
 #include <opencv2/opencv.hpp>
 #include <torch/torch.h>
-#include <iostream>
-#include <vector>
-#include "models/BaseModel.hpp"
+
+#include "common/Loss.hpp"
 #include "data/ImageLoader.hpp"
 #include "evaluation/Benchmark.hpp"
+#include "models/UNet.hpp"
+
+namespace fs = std::filesystem;
 
 int main() {
-    // Directories for training and testing
-    std::string trainImagesDir = "data/train/images";
-    std::string trainMasksDir = "data/train/masks";
-    std::string testImagesDir = "data/test/images";
-    std::string testMasksDir = "data/test/masks";
-    
-    // Define target size (e.g., 256x256)
+    // Blood Vessels Segmentation with UNet - DEMO
+
+    // Device
+    torch::Device device(torch::cuda::is_available() ? torch::kCUDA : torch::kCPU);
+    std::cout << "Using device: " << device << "\n";
+
+    // Image paths
+    const std::string trainImagesDir = "data/train/image";
+    const std::string trainMasksDir = "data/train/mask";
+    const std::string testImagesDir = "data/test/image";
+    const std::string testMasksDir = "data/test/mask";
+
+    // ImageLoader (resizes + binarizes masks)
     cv::Size targetSize(256, 256);
-    
-    // Create ImageLoader instances for images and masks
-    ImageLoader trainImageLoader(trainImagesDir, targetSize);
+    ImageLoader trainImgLoader(trainImagesDir, targetSize);
     ImageLoader trainMaskLoader(trainMasksDir, targetSize);
-    ImageLoader testImageLoader(testImagesDir, targetSize);
+    ImageLoader testImgLoader(testImagesDir, targetSize);
     ImageLoader testMaskLoader(testMasksDir, targetSize);
-    
-    // Load training data
-    std::vector<torch::Tensor> trainImages;
-    std::vector<torch::Tensor> trainMasks;
-    for (int i = 0; i < 80; ++i) {
-        std::string filename = std::to_string(i) + ".png";
-        torch::Tensor imgTensor = trainImageLoader.loadCached(filename);
-        torch::Tensor maskTensor = trainMaskLoader.loadCached(filename);
-        if (imgTensor.defined() && maskTensor.defined()) {
-            trainImages.push_back(imgTensor);
-            trainMasks.push_back(maskTensor);
-        } else {
-            std::cerr << "Error loading training image or mask: " << filename << "\n";
+
+    // Collect file names
+    std::vector<std::string> trainFiles, testFiles;
+    for (auto& p : fs::directory_iterator(trainImagesDir)) {
+        if (p.is_regular_file()) {
+            trainFiles.push_back(p.path().filename().string());
         }
     }
-    
-    // Stack tensors to form a batch (assume all images have the same dimensions)
-    torch::Tensor batchImages = torch::stack(trainImages);
-    torch::Tensor batchMasks = torch::stack(trainMasks);
-    
-    // Create a BaseModel instance for segmentation
-    BaseModel model("VesselSegmenter", 1, 1);
-    std::cout << model << std::endl;
-    
-    // Train the model on the training batch
-    std::cout << "Training model..." << "\n";
-    model.trainModel(batchImages, batchMasks);
-    
-    // Test the model
-    Benchmark testbench;
-    double accuracy = 0, precision = 0, recall = 0, f1score = 0;
-    for (int i = 0; i < 20; ++i) {
-        // Load and run inference on test image
-        std::string filename = std::to_string(i) + ".png";
-        torch::Tensor imgTensor = testImageLoader.loadCached(filename);
-        torch::Tensor predTensor = model.predict(imgTensor);
-
-        // Convert to cv::Mat, load test mask and run benchmark
-        cv::Mat predMat = testImageLoader.tensorToMat(predTensor);
-        cv::Mat maskMat = testMaskLoader.loadRaw(filename);
-        accuracy += testbench.computeAccuracyPixels(predMat, maskMat);
-        precision += testbench.computePrecisionPixels(predMat, maskMat);
-        recall += testbench.computeRecallPixels(predMat, maskMat);
-        f1score += testbench.computeF1Pixels(predMat, maskMat);
-
-        // Show images on screen
-        cv::imshow("Predicted image", predMat);
-        cv::imshow("Ground truth image", maskMat);
-        cv::waitKey(0);
+    for (auto& p : fs::directory_iterator(testImagesDir)) {
+        if (p.is_regular_file()) { 
+            testFiles.push_back(p.path().filename().string());
+        }
     }
-    // Compute mean and print results
-    accuracy /= 20;
-    precision /= 20;
-    recall /= 20;
-    f1score /= 20;
-    std::cout << "Accuracy: " << accuracy << "\n";
-    std::cout << "Precision: " << precision << "\n";
-    std::cout << "Recall: " << recall << "\n";
-    std::cout << "F1 score: " << f1score << "\n";
+
+    std::sort(trainFiles.begin(), trainFiles.end());
+    std::sort(testFiles.begin(),  testFiles.end());
+
+    // Model
+    auto model = std::make_shared<UNet>(1, 1, device);
+    model->to(device);
+
+    // Check if model already exists
+    std::string modelFile = "unet_blood_vessels_segmentation.pt";
+    if (fs::exists(modelFile)) {
+        std::cout << "Loading existing model from " << modelFile << "\n";
+        model->loadModel(modelFile);
+    } else {
+        std::cout << "No existing model found. Training a new one...\n";
+        model->train();
+
+        // Hyperparameters
+        const size_t epochs = 100;
+        const double lr = 1e-3;
+        const double weightBCE = 3.0;
+
+        // Optimizer
+        torch::optim::Adam optimizer(model->parameters(), torch::optim::AdamOptions(lr));
+
+        // Training loop
+        for (size_t epoch = 1; epoch <= epochs; ++epoch) {
+            double epoch_loss = 0.0;
+            size_t count = 0;
+
+            for (auto& fname : trainFiles) {
+                auto img = trainImgLoader.loadCached(fname);
+                auto mask = trainMaskLoader.loadCached(fname);
+                if (!img.defined() || !mask.defined()) {
+                    std::cerr << "[WARN] skipping " << fname << "\n";
+                    continue;
+                }
+
+                // [C, H, W] -> [1, C, H, W]
+                auto input = img.unsqueeze(0).to(device);
+                auto target = mask.unsqueeze(0).to(device);
+
+                // Forward pass
+                auto output = model->predict(input);
+
+                // Weighted BCE loss
+                auto bce = torch::nn::functional::binary_cross_entropy_with_logits(
+                    output, target, torch::nn::functional::BinaryCrossEntropyWithLogitsFuncOptions()
+                    .pos_weight(torch::tensor(weightBCE).to(device)));
+
+                // Dice loss
+                auto dice = diceLoss(output, target);
+
+                optimizer.zero_grad();
+                bce.backward();
+                optimizer.step();
+
+                epoch_loss += 0.5 * bce.item<double>() + 0.5 * dice.item<double>();
+                ++count;
+                if (count % 10 == 0) {
+                    std::cout << "Epoch [" << epoch << "/" << epochs << "]"
+                            << " Batch " << count << "/" << trainFiles.size()
+                            << "  Loss: " << (epoch_loss / count) << "\n";
+                }
+            }
+
+            std::cout << "*** Epoch " << epoch
+                    << " average loss: " << (epoch_loss / std::max<size_t>(1,count))
+                    << " ***\n";
+        }
+    }
+
+    // Save model
+    model->saveModel(modelFile);
+    std::cout << "Model saved to " << modelFile << "\n";
+
+    // Testing
+    model->eval();
+    torch::NoGradGuard no_grad;
+    Benchmark bench;
+
+    double sumAcc = 0, sumPrec = 0, sumRec = 0, sumF1 = 0;
+    size_t testCount = 0;
+
+    // Create demo video
+    // Video settings
+    int demoWidth  = targetSize.width * 3;
+    int demoHeight = targetSize.height;
+    int labelHeight = 50;
+    int fps = 1;
+    cv::VideoWriter writer(
+        "demo_blood_vessels_seg_unet.mp4",
+        cv::VideoWriter::fourcc('m','p','4','v'),
+        fps,
+        cv::Size(demoWidth, demoHeight + labelHeight)
+    );
+    if (!writer.isOpened()) {
+        std::cerr << "Error: could not open demo video writer for writing\n";
+    }
+
+    for (auto& fname : testFiles) {
+        auto img = testImgLoader.loadCached(fname);
+        if (!img.defined()) continue;
+        auto input = img.unsqueeze(0).to(device);
+
+        auto logits = model->predict(input);
+        auto prob = torch::sigmoid(logits).squeeze();
+        auto pred = (prob >= 0.5).to(torch::kU8);
+
+        // Convert to cv::Mat
+        auto cpuTensor = pred.cpu();
+        cv::Mat predMat = testImgLoader.tensorToMat(cpuTensor);
+
+        // Load ground truth
+        cv::Mat maskMat = testMaskLoader.loadRaw(fname);
+        cv::resize(predMat, predMat, maskMat.size(), 0, 0, cv::INTER_NEAREST);
+        if (predMat.channels() > 1) cv::cvtColor(predMat, predMat, cv::COLOR_BGR2GRAY);
+        if (maskMat.channels() > 1) cv::cvtColor(maskMat, maskMat, cv::COLOR_BGR2GRAY);
+        if (predMat.depth() != CV_8U) predMat.convertTo(predMat, CV_8U, 255);
+        if (maskMat.depth() != CV_8U) maskMat.convertTo(maskMat, CV_8U, 255);
+
+        // Metrics
+        sumAcc += bench.computeAccuracyPixels (predMat, maskMat);
+        sumPrec += bench.computePrecisionPixels (predMat, maskMat);
+        sumRec += bench.computeRecallPixels (predMat, maskMat);
+        sumF1 += bench.computeF1Pixels (predMat, maskMat);
+        ++testCount;
+
+        // // Display
+        // cv::imshow("Prediction", predMat);
+        // cv::imshow("Ground Truth", maskMat);
+        // cv::waitKey(0);
+
+        // Write demo video
+        // Load original image
+        cv::Mat original = testImgLoader.loadRaw(fname);
+
+        // Resize images to target size
+        cv::resize(original, original, targetSize, 0, 0, cv::INTER_LINEAR);
+        cv::resize(maskMat, maskMat, targetSize, 0, 0, cv::INTER_NEAREST);
+        cv::resize(predMat, predMat, targetSize, 0, 0, cv::INTER_NEAREST);
+
+        // Convert ground truth mask and prediction mask images to BGR
+        cv::Mat gtColor, predColor;
+        cv::cvtColor(maskMat, gtColor, cv::COLOR_GRAY2BGR);
+        cv::cvtColor(predMat, predColor, cv::COLOR_GRAY2BGR);
+
+        // Extend the upper part of each image to add a label
+        cv::Mat originalWithLabel(targetSize.height + labelHeight, targetSize.width, original.type(), cv::Scalar(0, 0, 0));
+        cv::Mat gtColorWithLabel(targetSize.height + labelHeight, targetSize.width, gtColor.type(), cv::Scalar(0, 0, 0));
+        cv::Mat predColorWithLabel(targetSize.height + labelHeight, targetSize.width, predColor.type(), cv::Scalar(0, 0, 0));
+
+        // Copy the original images into the lower part of the extended images
+        original.copyTo(originalWithLabel(cv::Rect(0, labelHeight, targetSize.width, targetSize.height)));
+        gtColor.copyTo(gtColorWithLabel(cv::Rect(0, labelHeight, targetSize.width, targetSize.height)));
+        predColor.copyTo(predColorWithLabel(cv::Rect(0, labelHeight, targetSize.width, targetSize.height)));
+
+        // Add text labels in the middle of the upper part
+        cv::putText(originalWithLabel, "Original image", cv::Point(targetSize.width / 2 - 50, labelHeight / 2 + 10), 
+                cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
+        cv::putText(gtColorWithLabel, "Ground truth mask", cv::Point(targetSize.width / 2 - 70, labelHeight / 2 + 10), 
+                cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
+        cv::putText(predColorWithLabel, "Predicted mask", cv::Point(targetSize.width / 2 - 60, labelHeight / 2 + 10), 
+                cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
+
+        // Construct frame with extended height
+        std::vector<cv::Mat> panels = { originalWithLabel, gtColorWithLabel, predColorWithLabel };
+        cv::Mat frame;
+        cv::hconcat(panels, frame);
+
+        // Write frame to video (2 seconds per image)
+        for (int i = 0; i < 2; ++i) {
+            writer.write(frame);
+        }
+    }
+
+    if (testCount) {
+        std::cout << "\n=== Test results over " << testCount << " images ===\n"
+                  << "Accuracy : " << (sumAcc / testCount) << "\n"
+                  << "Precision: " << (sumPrec / testCount) << "\n"
+                  << "Recall   : " << (sumRec / testCount) << "\n"
+                  << "F1 Score : " << (sumF1 / testCount) << "\n";
+    }
+
+    writer.release();
+    cv::destroyAllWindows();
+    std::cout << "Demo video saved as demo_blood_vessels_seg_unet.mp4\n";
+
     return 0;
 }

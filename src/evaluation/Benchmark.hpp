@@ -60,6 +60,6 @@ public:
     // Compute label-based Intersection over Union (IoU): TP / (TP + FP + FN)
     double computeIoULabels(const std::vector<int>& pred, const std::vector<int>& gt) const;
 
-    // Overloaded << operator to print a brief summary\
+    // Overloaded << operator to print a brief summary
     friend std::ostream& operator<<(std::ostream& os, const Benchmark& bm);
 };

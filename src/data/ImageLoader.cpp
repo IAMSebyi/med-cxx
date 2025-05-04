@@ -73,13 +73,19 @@ torch::Tensor ImageLoader::matToTensor(const cv::Mat& img) const {
 }
 
 cv::Mat ImageLoader::tensorToMat(const torch::Tensor& tensor) const {
-    torch::Tensor cpuTensor = tensor.detach().to(torch::kCPU);
-    cpuTensor = cpuTensor.squeeze(); // remove batch/channel dimensions if necessary
-    int height = cpuTensor.size(0);
-    int width = cpuTensor.size(1);
-    // Assuming tensor is float and values in [0,1]
-    cv::Mat mat(height, width, CV_32F, cpuTensor.data_ptr<float>());
-    return mat.clone(); // Clone to get data
+    torch::Tensor cpu = tensor.detach().to(torch::kCPU).squeeze();
+    int height = cpu.size(0), width = cpu.size(1);
+
+    if (cpu.dtype() == torch::kUInt8) {
+        // Clone the data into a new U8 Mat and scale it in place to 0/255
+        cv::Mat mat{height, width, CV_8U, cpu.data_ptr<uint8_t>()};
+        mat.convertTo(mat, CV_8U, 255.0);
+        return mat.clone();
+    }
+
+    // Existing float path
+    torch::Tensor f = cpu.to(torch::kFloat);
+    return cv::Mat{height, width, CV_32F, f.data_ptr<float>()}.clone();
 }
 
 std::ostream& operator<<(std::ostream& os, const ImageLoader& loader) {
