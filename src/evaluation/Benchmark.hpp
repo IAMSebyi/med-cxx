@@ -1,8 +1,13 @@
 #pragma once
 
+#include "common/Exception.hpp"
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <vector>
+
+namespace med {
+
+namespace eval {
 
 // Benchmark class provides methods to compute various evaluation metrics
 // for both pixel-level segmentation tasks and label-based classification tasks.
@@ -23,11 +28,8 @@ public:
     // Compute pixel-based recall: TP / (TP + FN)
     double computeRecallPixels(const cv::Mat& pred, const cv::Mat& gt) const;
 
-    // Compute pixel-based F1 score: 2*precision*recall / (precision + recall)
+    // Compute pixel-based F1 score: 2 * precision * recall / (precision + recall)
     double computeF1Pixels(const cv::Mat& pred, const cv::Mat& gt) const;
-
-    // Compute pixel-based Dice coefficient: 2*TP / (2*TP + FP + FN)
-    double computeDicePixels(const cv::Mat& pred, const cv::Mat& gt) const;
 
     // Compute pixel-based Intersection over Union (IoU): TP / (TP + FP + FN)
     double computeIoUPixels(const cv::Mat& pred, const cv::Mat& gt) const;
@@ -51,15 +53,19 @@ public:
     // Compute label-based recall: TP / (TP + FN)
     double computeRecallLabels(const std::vector<int>& pred, const std::vector<int>& gt) const;
 
-    // Compute label-based F1 score: 2*precision*recall / (precision + recall)
+    // Compute label-based F1 score: 2 * precision * recall / (precision + recall)
     double computeF1Labels(const std::vector<int>& pred, const std::vector<int>& gt) const;
-
-    // Compute label-based Dice coefficient: 2*TP / (2*TP + FP + FN)
-    double computeDiceLabels(const std::vector<int>& pred, const std::vector<int>& gt) const;
 
     // Compute label-based Intersection over Union (IoU): TP / (TP + FP + FN)
     double computeIoULabels(const std::vector<int>& pred, const std::vector<int>& gt) const;
 
     // Overloaded << operator to print a brief summary
-    friend std::ostream& operator<<(std::ostream& os, const Benchmark& bm);
+    friend std::ostream& operator<<(std::ostream& os, const Benchmark& bm) {
+        os << "Benchmark metrics (pixel-based and label-based metrics are available)";
+        return os;
+    }
 };
+
+} // namespace eval
+
+} // namespace med

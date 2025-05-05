@@ -1,78 +1,12 @@
 #pragma once
 
 #include "BaseModel.hpp"
+#include "layers/BasicBlock.hpp"
+#include "layers/Bottleneck.hpp"
 #include <torch/torch.h>
 
-// Basic residual block (for ResNet-18/34)
-struct BasicBlock : torch::nn::Module {
-    static const int expansion = 1;
-
-    // Layers
-    torch::nn::Conv2d conv1{nullptr}, conv2{nullptr};
-    torch::nn::BatchNorm2d bn1{nullptr}, bn2{nullptr};
-    torch::nn::Sequential downsample;
-
-    // Constructor
-    BasicBlock(int inPlanes, int planes, int stride=1, torch::nn::Sequential downsample_={})
-      : downsample(downsample_) {
-        conv1 = register_module("conv1", torch::nn::Conv2d(torch::nn::Conv2dOptions(inPlanes, planes, 3).stride(stride).padding(1).bias(false)));
-        bn1 = register_module("bn1", torch::nn::BatchNorm2d(planes));
-        conv2 = register_module("conv2", torch::nn::Conv2d(torch::nn::Conv2dOptions(planes, planes, 3).stride(1).padding(1).bias(false)));
-        bn2 = register_module("bn2", torch::nn::BatchNorm2d(planes));
-        if (!downsample_->is_empty()) {
-            register_module("downsample", downsample);
-        }
-    }
-
-    // Forward pass
-    torch::Tensor forward(torch::Tensor x) {
-        auto identity = x.clone();
-        x = torch::relu(bn1->forward(conv1->forward(x)));
-        x = torch::relu(bn2->forward(conv2->forward(x)));
-        if (!downsample->is_empty()) {
-            identity = downsample->forward(identity);
-        }
-        x += identity;
-        return torch::relu(x);
-    }
-};
-
-// Bottleneck block (for ResNet-50/101/152)
-struct Bottleneck : torch::nn::Module {
-    static const int expansion = 4;
-
-    // Layers
-    torch::nn::Conv2d conv1{nullptr}, conv2{nullptr}, conv3{nullptr};
-    torch::nn::BatchNorm2d bn1{nullptr}, bn2{nullptr}, bn3{nullptr};
-    torch::nn::Sequential downsample;
-
-    // Constructor
-    Bottleneck(int inPlanes, int planes, int stride=1, torch::nn::Sequential downsample_={})
-    : downsample(downsample_) {
-        conv1 = register_module("conv1", torch::nn::Conv2d(torch::nn::Conv2dOptions(inPlanes, planes, 1).bias(false)));
-        bn1 = register_module("bn1", torch::nn::BatchNorm2d(planes));
-        conv2 = register_module("conv2", torch::nn::Conv2d(torch::nn::Conv2dOptions(planes, planes, 3).stride(stride).padding(1).bias(false)));
-        bn2 = register_module("bn2", torch::nn::BatchNorm2d(planes));
-        conv3 = register_module("conv3", torch::nn::Conv2d(torch::nn::Conv2dOptions(planes, planes*expansion, 1).bias(false)));
-        bn3 = register_module("bn3", torch::nn::BatchNorm2d(planes*expansion));
-        if (!downsample_->is_empty()) {
-            register_module("downsample", downsample);
-        }
-    }
-
-    // Forward pass
-    torch::Tensor forward(torch::Tensor x) {
-        auto identity = x.clone();
-        x = torch::relu(bn1->forward(conv1->forward(x)));
-        x = torch::relu(bn2->forward(conv2->forward(x)));
-        x = bn3->forward(conv3->forward(x));
-        if (!downsample->is_empty()) {
-            identity = downsample->forward(identity);
-        }
-        x += identity;
-        return torch::relu(x);
-    }
-};
+namespace med {
+namespace models {
 
 // Templated ResNet body
 template <class Block>
@@ -137,11 +71,11 @@ private:
 };
 
 // Shared‐ptr aliases
-using ResNet18Impl = ResNetImpl<BasicBlock>;
-using ResNet34Impl = ResNetImpl<BasicBlock>;
-using ResNet50Impl = ResNetImpl<Bottleneck>;
-using ResNet101Impl = ResNetImpl<Bottleneck>;
-using ResNet152Impl = ResNetImpl<Bottleneck>;
+using ResNet18Impl = ResNetImpl<med::layers::BasicBlock>;
+using ResNet34Impl = ResNetImpl<med::layers::BasicBlock>;
+using ResNet50Impl = ResNetImpl<med::layers::Bottleneck>;
+using ResNet101Impl = ResNetImpl<med::layers::Bottleneck>;
+using ResNet152Impl = ResNetImpl<med::layers::Bottleneck>;
 
 // Public ResNet
 class ResNet : public BaseModel {
@@ -162,3 +96,6 @@ private:
     std::shared_ptr<ResNet101Impl> res101;
     std::shared_ptr<ResNet152Impl> res152;
 };
+
+} // namespace models
+} // namespace med

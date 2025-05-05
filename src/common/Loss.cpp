@@ -1,6 +1,6 @@
 #include "Loss.hpp"
 
-torch::Tensor diceLoss(torch::Tensor preds, torch::Tensor targets) {
+torch::Tensor med::loss::diceLoss(torch::Tensor preds, torch::Tensor targets) {
     preds = torch::sigmoid(preds);
     auto intersection = (preds * targets).sum();
     auto union_ = preds.sum() + targets.sum();

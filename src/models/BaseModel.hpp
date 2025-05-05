@@ -4,6 +4,10 @@
 #include <iostream>
 #include <string>
 
+namespace med {
+
+namespace models {
+
 // Base model class for all models
 class BaseModel : public torch::nn::Module {
 public:
@@ -29,9 +33,16 @@ public:
     void loadModel(const std::string& filename);
 
     // Overloaded operator<< for printing model info
-    friend std::ostream& operator<<(std::ostream& os, const BaseModel& model);
+    friend std::ostream& operator<<(std::ostream& os, const BaseModel& model) {
+        os << model.name << " model on device " << model.device;
+        return os;
+    }
 
 protected:
     std::string name;
     torch::Device device;
 };
+
+} // namespace models
+
+} // namespace med

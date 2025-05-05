@@ -1,6 +1,6 @@
 #include "DenseNet.hpp"
 
-DenseNet::DenseNet(
+med::models::DenseNetImpl::DenseNetImpl(
     const std::vector<int>& blockConfig_,
     int growthRate_,
     int numInitFeatures,
@@ -23,14 +23,14 @@ DenseNet::DenseNet(
 
     for (size_t i = 0; i < blockConfig.size(); ++i) {
         // DenseBlock
-        DenseBlock block(blockConfig[i], numFeatures, growthRate);
+        med::layers::DenseBlock block(blockConfig[i], numFeatures, growthRate);
         features->push_back(block);
         numFeatures += blockConfig[i] * growthRate;
 
         // Transition (except after last)
         if (i + 1 < blockConfig.size()) {
             int outFeatures = numFeatures / 2;
-            Transition trans(numFeatures, outFeatures);
+            med::layers::Transition trans(numFeatures, outFeatures);
             features->push_back(trans);
             numFeatures = outFeatures;
         }
@@ -41,7 +41,7 @@ DenseNet::DenseNet(
     classifier = register_module("classifier", torch::nn::Linear(numFeatures, numClasses));
 }
 
-torch::Tensor DenseNet::predict(const torch::Tensor& input) {
+torch::Tensor med::models::DenseNetImpl::predict(const torch::Tensor& input) {
     // Initial layers
     auto out = initPool->forward(initReLU->forward(initBN->forward(initConv->forward(input))));
     // Forward through the sequential of blocks/transitions
