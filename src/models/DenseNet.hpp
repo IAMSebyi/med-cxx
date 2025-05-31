@@ -7,7 +7,7 @@
 #include <torch/torch.h>
 
 namespace med {
-
+    
 namespace models {
 
 // DenseNet implementation class inheriting BaseModel

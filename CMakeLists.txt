@@ -20,11 +20,14 @@ message(STATUS "Found OpenCV ${OpenCV_VERSION}")
 
 # Executable
 add_executable(${PROJECT_NAME}
-    src/common/Utils.cpp 
+    src/common/ArgParser.cpp 
     src/common/Exception.cpp
     src/common/Loss.cpp
+    src/common/Utils.cpp
+    src/common/Visualizer.cpp
     src/data/ImageLoader.cpp
     src/evaluation/Benchmark.cpp
+    src/layers/BaseLayer.cpp
     src/layers/DenseLayer.cpp 
     src/layers/DenseBlock.cpp 
     src/layers/Transition.cpp 
@@ -38,7 +41,10 @@ add_executable(${PROJECT_NAME}
     src/models/DenseNet.cpp
     src/models/ResNet.cpp  
     src/models/UNet.cpp 
-    src/main.cpp
+    src/trainer/BaseTrainer.cpp
+    src/trainer/ClassificationTrainer.cpp
+    src/trainer/SegmentationTrainer.cpp
+    src/runners/main.cpp
 )
 
 # Includes

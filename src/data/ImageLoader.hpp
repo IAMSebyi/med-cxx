@@ -10,7 +10,6 @@
 namespace fs = std::filesystem;
 
 namespace med {
-
 namespace data {
 
 class ImageLoader {
@@ -51,6 +50,5 @@ private:
     std::string cacheDir;  // Directory for processed images caching
 };
 
-}
-
+} // namespace data
 } // namespace med

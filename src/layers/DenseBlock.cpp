@@ -1,6 +1,10 @@
 #include "DenseBlock.hpp"
 
-med::layers::DenseBlockImpl::DenseBlockImpl(int numLayers, int inChannels, int growthRate) {
+namespace med {
+namespace layers {
+
+DenseBlockImpl::DenseBlockImpl(int numLayers, int inChannels, int growthRate)
+: BaseLayer("DenseBlock: stack of numLayers DenseLayer modules (Used in DenseNet)") {
     int channels = inChannels;
     for (int i = 0; i < numLayers; ++i) {
         DenseLayer layer(channels, growthRate);
@@ -11,6 +15,9 @@ med::layers::DenseBlockImpl::DenseBlockImpl(int numLayers, int inChannels, int g
     register_module("layers", layers);
 }
 
-torch::Tensor med::layers::DenseBlockImpl::forward(torch::Tensor x) {
+torch::Tensor DenseBlockImpl::forward(torch::Tensor x) {
     return layers->forward(x);
 }
+
+} // namespace layers
+} // namespace med

@@ -1,7 +1,10 @@
 #include "Benchmark.hpp"
 
+namespace med {
+namespace eval {
+
 // Assumes that pred and gt have the same size and type CV_8U with values 0 or 255
-cv::Mat med::eval::Benchmark::computeConfusionPixels(const cv::Mat& pred, const cv::Mat& gt) const {
+cv::Mat Benchmark::computeConfusionPixels(const cv::Mat& pred, const cv::Mat& gt) const {
     if (!(pred.size() == gt.size() && pred.type() == CV_8U && gt.type() == CV_8U)) {
         throw med::error::DataProcessingException("computeConfusionPixels", "pred/gt must be same size and CV_8U");
     }
@@ -20,7 +23,7 @@ cv::Mat med::eval::Benchmark::computeConfusionPixels(const cv::Mat& pred, const 
     return (cv::Mat_<int>(2, 2) << TP, FP, FN, TN);
 }
 
-double med::eval::Benchmark::computeAccuracyPixels(const cv::Mat& pred, const cv::Mat& gt) const {
+double Benchmark::computeAccuracyPixels(const cv::Mat& pred, const cv::Mat& gt) const {
     cv::Mat confusion = computeConfusionPixels(pred, gt);
     int TP = confusion.at<int>(0, 0);
     int FP = confusion.at<int>(0, 1);
@@ -30,27 +33,27 @@ double med::eval::Benchmark::computeAccuracyPixels(const cv::Mat& pred, const cv
     return total > 0 ? static_cast<double>(TP + TN) / total : 0.0;
 }
 
-double med::eval::Benchmark::computePrecisionPixels(const cv::Mat& pred, const cv::Mat& gt) const {
+double Benchmark::computePrecisionPixels(const cv::Mat& pred, const cv::Mat& gt) const {
     cv::Mat confusion = computeConfusionPixels(pred, gt);
     int TP = confusion.at<int>(0, 0);
     int FP = confusion.at<int>(0, 1);
     return (TP + FP) > 0 ? static_cast<double>(TP) / (TP + FP) : 0.0;
 }
 
-double med::eval::Benchmark::computeRecallPixels(const cv::Mat& pred, const cv::Mat& gt) const {
+double Benchmark::computeRecallPixels(const cv::Mat& pred, const cv::Mat& gt) const {
     cv::Mat confusion = computeConfusionPixels(pred, gt);
     int TP = confusion.at<int>(0, 0);
     int FN = confusion.at<int>(1, 0);
     return (TP + FN) > 0 ? static_cast<double>(TP) / (TP + FN) : 0.0;
 }
 
-double med::eval::Benchmark::computeF1Pixels(const cv::Mat& pred, const cv::Mat& gt) const {
+double Benchmark::computeF1Pixels(const cv::Mat& pred, const cv::Mat& gt) const {
     double precision = computePrecisionPixels(pred, gt);
     double recall = computeRecallPixels(pred, gt);
     return (precision + recall) > 0 ? 2.0 * precision * recall / (precision + recall) : 0.0;
 }
 
-double med::eval::Benchmark::computeIoUPixels(const cv::Mat& pred, const cv::Mat& gt) const {
+double Benchmark::computeIoUPixels(const cv::Mat& pred, const cv::Mat& gt) const {
     cv::Mat confusion = computeConfusionPixels(pred, gt);
     int TP = confusion.at<int>(0, 0);
     int FP = confusion.at<int>(0, 1);
@@ -59,7 +62,7 @@ double med::eval::Benchmark::computeIoUPixels(const cv::Mat& pred, const cv::Mat
 }
 
 // Assumes that pred and gt have the same size and type CV_8U or CV_32F
-double med::eval::Benchmark::computeMAE(const cv::Mat& pred, const cv::Mat& gt) const {
+double Benchmark::computeMAE(const cv::Mat& pred, const cv::Mat& gt) const {
     if (!(pred.size() == gt.size() && pred.type() == gt.type() && (pred.type() == CV_8U || pred.type() == CV_32F))) {
         throw med::error::DataProcessingException("computeMAE", "pred/gt must be same size and CV_8U or CV_32F");
     }
@@ -73,7 +76,7 @@ double med::eval::Benchmark::computeMAE(const cv::Mat& pred, const cv::Mat& gt) 
 }
 
 // Assumes that pred and gt have the same size and type CV_8U with values 0 or 255
-double med::eval::Benchmark::computeHausdorff(const cv::Mat& pred, const cv::Mat& gt) const {
+double Benchmark::computeHausdorff(const cv::Mat& pred, const cv::Mat& gt) const {
     if (!(pred.size() == gt.size() && pred.type() == CV_8U && gt.type() == CV_8U)) {
         throw med::error::DataProcessingException("computeHausdorff", "pred/gt must be same size and CV_8U");
     }
@@ -106,7 +109,7 @@ double med::eval::Benchmark::computeHausdorff(const cv::Mat& pred, const cv::Mat
 }
 
 // Assume that pred and gt are vectors of equal length, containing binary labels (0 or 1).
-std::vector<int> med::eval::Benchmark::computeConfusionLabels(const std::vector<int>& pred, const std::vector<int>& gt) const {
+std::vector<int> Benchmark::computeConfusionLabels(const std::vector<int>& pred, const std::vector<int>& gt) const {
     if (pred.size() != gt.size()) {
         throw med::error::DataProcessingException("computeConfusionLabels", "pred and gt must be the same size");
     }
@@ -123,7 +126,7 @@ std::vector<int> med::eval::Benchmark::computeConfusionLabels(const std::vector<
     return {TP, FP, FN, TN};
 }
 
-double med::eval::Benchmark::computeAccuracyLabels(const std::vector<int>& pred, const std::vector<int>& gt) const {
+double Benchmark::computeAccuracyLabels(const std::vector<int>& pred, const std::vector<int>& gt) const {
     auto confusion = computeConfusionLabels(pred, gt);
     int TP = confusion[0];
     int FP = confusion[1];
@@ -133,30 +136,33 @@ double med::eval::Benchmark::computeAccuracyLabels(const std::vector<int>& pred,
     return total > 0 ? static_cast<double>(TP + TN) / total : 0.0;
 }
 
-double med::eval::Benchmark::computePrecisionLabels(const std::vector<int>& pred, const std::vector<int>& gt) const {
+double Benchmark::computePrecisionLabels(const std::vector<int>& pred, const std::vector<int>& gt) const {
     auto confusion = computeConfusionLabels(pred, gt);
     int TP = confusion[0];
     int FP = confusion[1];
     return (TP + FP) > 0 ? static_cast<double>(TP) / (TP + FP) : 0.0;
 }
 
-double med::eval::Benchmark::computeRecallLabels(const std::vector<int>& pred, const std::vector<int>& gt) const {
+double Benchmark::computeRecallLabels(const std::vector<int>& pred, const std::vector<int>& gt) const {
     auto confusion = computeConfusionLabels(pred, gt);
     int TP = confusion[0];
     int FN = confusion[2];
     return (TP + FN) > 0 ? static_cast<double>(TP) / (TP + FN) : 0.0;
 }
 
-double med::eval::Benchmark::computeF1Labels(const std::vector<int>& pred, const std::vector<int>& gt) const {
+double Benchmark::computeF1Labels(const std::vector<int>& pred, const std::vector<int>& gt) const {
     double precision = computePrecisionLabels(pred, gt);
     double recall = computeRecallLabels(pred, gt);
     return (precision + recall) > 0 ? 2.0 * precision * recall / (precision + recall) : 0.0;
 }
 
-double med::eval::Benchmark::computeIoULabels(const std::vector<int>& pred, const std::vector<int>& gt) const {
+double Benchmark::computeIoULabels(const std::vector<int>& pred, const std::vector<int>& gt) const {
     auto confusion = computeConfusionLabels(pred, gt);
     int TP = confusion[0];
     int FP = confusion[1];
     int FN = confusion[2];
     return (TP + FP + FN) > 0 ? static_cast<double>(TP) / (TP + FP + FN) : 0.0;
 }
+
+} // namespace eval
+} // namespace med

@@ -1,6 +1,9 @@
 #include "ImageLoader.hpp"
 
-med::data::ImageLoader::ImageLoader(const std::string& imageDir, const cv::Size& targetSize)
+namespace med {
+namespace data {
+
+ImageLoader::ImageLoader(const std::string& imageDir, const cv::Size& targetSize)
     : rootDir(imageDir), targetSize(targetSize)
 {
     // Cache directory will be "rootDir/cache"
@@ -10,7 +13,7 @@ med::data::ImageLoader::ImageLoader(const std::string& imageDir, const cv::Size&
     }
 }
 
-cv::Mat med::data::ImageLoader::loadRaw(const std::string& filePath) const {
+cv::Mat ImageLoader::loadRaw(const std::string& filePath) const {
     std::string fullPath = rootDir + "/" + filePath;
     cv::Mat img = cv::imread(fullPath, cv::IMREAD_COLOR);
     if (img.empty()) {
@@ -19,7 +22,7 @@ cv::Mat med::data::ImageLoader::loadRaw(const std::string& filePath) const {
     return img;
 }
 
-torch::Tensor med::data::ImageLoader::process(const cv::Mat& img) const {
+torch::Tensor ImageLoader::process(const cv::Mat& img) const {
     cv::Mat resized, gray, thresh;
     try {
         cv::resize(img, resized, targetSize);
@@ -35,7 +38,7 @@ torch::Tensor med::data::ImageLoader::process(const cv::Mat& img) const {
     return tensor;
 }
 
-torch::Tensor med::data::ImageLoader::loadCached(const std::string& filePath) {
+torch::Tensor ImageLoader::loadCached(const std::string& filePath) {
     fs::path p(filePath);
     std::string cacheFile = cacheDir + "/" + p.stem().string() + ".pt";
 
@@ -55,7 +58,7 @@ torch::Tensor med::data::ImageLoader::loadCached(const std::string& filePath) {
     }
 }
 
-void med::data::ImageLoader::cache(const std::string& filePath, const torch::Tensor& tensor) const {
+void ImageLoader::cache(const std::string& filePath, const torch::Tensor& tensor) const {
     fs::path p(filePath);
     std::string cacheFile = cacheDir + "/" + p.stem().string() + ".pt";
     try {
@@ -65,7 +68,7 @@ void med::data::ImageLoader::cache(const std::string& filePath, const torch::Ten
     }
 }
 
-torch::Tensor med::data::ImageLoader::matToTensor(const cv::Mat& img) const {
+torch::Tensor ImageLoader::matToTensor(const cv::Mat& img) const {
     // Convert image to float32 and normalize to [0,1]
     cv::Mat floatImg;
     img.convertTo(floatImg, CV_32F, 1.0 / 255);
@@ -76,7 +79,7 @@ torch::Tensor med::data::ImageLoader::matToTensor(const cv::Mat& img) const {
     return tensor.clone(); // Clone to get data
 }
 
-cv::Mat med::data::ImageLoader::tensorToMat(const torch::Tensor& tensor) const {
+cv::Mat ImageLoader::tensorToMat(const torch::Tensor& tensor) const {
     torch::Tensor cpu = tensor.detach().to(torch::kCPU).squeeze();
     int height = cpu.size(0), width = cpu.size(1);
 
@@ -91,3 +94,6 @@ cv::Mat med::data::ImageLoader::tensorToMat(const torch::Tensor& tensor) const {
     torch::Tensor f = cpu.to(torch::kFloat);
     return cv::Mat{height, width, CV_32F, f.data_ptr<float>()}.clone();
 }
+
+} // namespace data
+} // namespace med

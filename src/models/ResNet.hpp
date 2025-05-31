@@ -6,6 +6,7 @@
 #include <torch/torch.h>
 
 namespace med {
+
 namespace models {
 
 // Templated ResNet body
@@ -98,4 +99,5 @@ private:
 };
 
 } // namespace models
+
 } // namespace med

@@ -5,7 +5,6 @@
 #include <string>
 
 namespace med {
-
 namespace models {
 
 // Base model class for all models
@@ -27,10 +26,10 @@ public:
     virtual torch::Tensor predict(const torch::Tensor& input) = 0;
 
     // Save model weights to file
-    void saveModel(const std::string& filename) const;
+    virtual void saveModel(const std::string& filename) const;
 
     // Load model weights from file
-    void loadModel(const std::string& filename);
+    virtual void loadModel(const std::string& filename);
 
     // Overloaded operator<< for printing model info
     friend std::ostream& operator<<(std::ostream& os, const BaseModel& model) {
@@ -44,5 +43,4 @@ protected:
 };
 
 } // namespace models
-
 } // namespace med

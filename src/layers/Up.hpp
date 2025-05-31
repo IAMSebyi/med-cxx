@@ -1,25 +1,22 @@
 #pragma once
 
+#include "BaseLayer.hpp"
 #include "DoubleConv.hpp"
 #include <torch/torch.h>
 
 namespace med {
-
 namespace layers {
 
 // Up-sampling block: ConvTranspose2d then DoubleConv with skip connection
-class UpImpl : public torch::nn::Module {
+class UpImpl : public BaseLayer {
 public:
     // Constructor
     UpImpl(int inChannels, int outChannels);
 
     // Forward pass
-    torch::Tensor forward(torch::Tensor x1, torch::Tensor x2);
-
-    // Overloaded operator<< for printing layer info
-    friend std::ostream& operator<<(std::ostream& os, const UpImpl& layer) {
-        os << "Up-sampling block: ConvTranspose2d then DoubleConv with skip connection (Used in UNet)";
-        return os;
+    torch::Tensor forward_(torch::Tensor x1, torch::Tensor x2);
+    torch::Tensor forward(torch::Tensor x) override {
+        throw std::runtime_error("UpImpl::forward() should not be called directly, use forward_(x1, x2) instead.");
     }
     
 private:
@@ -30,5 +27,4 @@ private:
 TORCH_MODULE(Up);
 
 } // namespace layers
-
 } // namespace med

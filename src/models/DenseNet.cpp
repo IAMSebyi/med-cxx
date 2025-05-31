@@ -1,6 +1,9 @@
 #include "DenseNet.hpp"
 
-med::models::DenseNetImpl::DenseNetImpl(
+namespace med {
+namespace models {
+
+DenseNetImpl::DenseNetImpl(
     const std::vector<int>& blockConfig_,
     int growthRate_,
     int numInitFeatures,
@@ -41,7 +44,7 @@ med::models::DenseNetImpl::DenseNetImpl(
     classifier = register_module("classifier", torch::nn::Linear(numFeatures, numClasses));
 }
 
-torch::Tensor med::models::DenseNetImpl::predict(const torch::Tensor& input) {
+torch::Tensor DenseNetImpl::predict(const torch::Tensor& input) {
     // Initial layers
     auto out = initPool->forward(initReLU->forward(initBN->forward(initConv->forward(input))));
     // Forward through the sequential of blocks/transitions
@@ -52,3 +55,6 @@ torch::Tensor med::models::DenseNetImpl::predict(const torch::Tensor& input) {
     out = out.view({out.size(0), -1});
     return classifier->forward(out);
 }
+
+} // namespace models
+} // namespace med

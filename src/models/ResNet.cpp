@@ -1,10 +1,13 @@
 #include "ResNet.hpp"
 
-// Explicit instantiation of templates
-template class med::models::ResNetImpl<med::layers::BasicBlock>;
-template class med::models::ResNetImpl<med::layers::Bottleneck>;
+namespace med {
+namespace models {
 
-med::models::ResNet::ResNet(Version ver, int numClasses, torch::Device device)
+// Explicit instantiation of templates
+template class ResNetImpl<med::layers::BasicBlock>;
+template class ResNetImpl<med::layers::Bottleneck>;
+
+ResNet::ResNet(Version ver, int numClasses, torch::Device device)
 : BaseModel("ResNet", device),
   version_(ver)
 {
@@ -30,14 +33,17 @@ med::models::ResNet::ResNet(Version ver, int numClasses, torch::Device device)
     }
 }
 
-torch::Tensor med::models::ResNet::predict(const torch::Tensor& input) {
+torch::Tensor ResNet::predict(const torch::Tensor& input) {
     switch (version_) {
-        case R18:   return res18->forward(input);
-        case R34:   return res34->forward(input);
-        case R50:   return res50->forward(input);
-        case R101:  return res101->forward(input);
-        case R152:  return res152->forward(input);
+        case R18: return res18->forward(input);
+        case R34: return res34->forward(input);
+        case R50: return res50->forward(input);
+        case R101: return res101->forward(input);
+        case R152: return res152->forward(input);
     }
     // Fallback
     return res18->forward(input);
 }
+
+} // namespace models
+} // namespace med

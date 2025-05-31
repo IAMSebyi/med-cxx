@@ -6,7 +6,6 @@
 #include <vector>
 
 namespace med {
-
 namespace eval {
 
 // Benchmark class provides methods to compute various evaluation metrics
@@ -67,5 +66,4 @@ public:
 };
 
 } // namespace eval
-
 } // namespace med

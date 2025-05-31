@@ -1,6 +1,9 @@
 #include "UNet.hpp"
 
-med::models::UNetImpl::UNetImpl(int inChannels, int outChannels, torch::Device device)
+namespace med {
+namespace models {
+
+UNetImpl::UNetImpl(int inChannels, int outChannels, torch::Device device)
     : BaseModel("UNet", device),
       inc(inChannels, 64),
       down1(64, 128),
@@ -26,15 +29,18 @@ med::models::UNetImpl::UNetImpl(int inChannels, int outChannels, torch::Device d
     register_module("outc", outc);
 }
 
-torch::Tensor med::models::UNetImpl::predict(const torch::Tensor& input) {
+torch::Tensor UNetImpl::predict(const torch::Tensor& input) {
     auto x1 = inc->forward(input);
     auto x2 = down1->forward(x1);
     auto x3 = down2->forward(x2);
     auto x4 = down3->forward(x3);
     auto x5 = down4->forward(x4);
-    auto y1 = up1->forward(x5, x4);
-    auto y2 = up2->forward(y1, x3);
-    auto y3 = up3->forward(y2, x2);
-    auto y4 = up4->forward(y3, x1);
+    auto y1 = up1->forward_(x5, x4);
+    auto y2 = up2->forward_(y1, x3);
+    auto y3 = up3->forward_(y2, x2);
+    auto y4 = up4->forward_(y3, x1);
     return outc->forward(y4);
 }
+
+} // namespace models
+} // namespace med

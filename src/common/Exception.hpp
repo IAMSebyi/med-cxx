@@ -4,7 +4,6 @@
 #include <string>
 
 namespace med {
-
 namespace error {
 
 // Base class for all MED-CXX exceptions
@@ -41,6 +40,12 @@ public:
     ~ModelException() noexcept override;
 };
 
-} // namespace error
+// Thrown on configuration errors (e.g. missing required options)
+class ConfigException : public Exception {
+public:
+    ConfigException(const std::string& context, const std::string& details);
+    ~ConfigException() noexcept override;
+};
 
+} // namespace error
 } // namespace med

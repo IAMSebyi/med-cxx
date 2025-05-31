@@ -82,6 +82,7 @@
         "valarray": "cpp",
         "variant": "cpp",
         "semaphore": "cpp",
-        "__nullptr": "cpp"
+        "__nullptr": "cpp",
+        "stack": "cpp"
     }
 }

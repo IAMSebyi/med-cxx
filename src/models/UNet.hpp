@@ -8,6 +8,7 @@
 #include <torch/torch.h>
 
 namespace med {
+    
 namespace models {
 
 // UNet implementation class inheriting BaseModel
@@ -29,4 +30,5 @@ private:
 TORCH_MODULE(UNet);
 
 } // namespace models
+
 } // namespace med
